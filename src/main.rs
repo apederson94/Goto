@@ -2,6 +2,7 @@ use clap::Parser;
 use std::fs;
 use dirs;
 use serde::{Serialize, Deserialize};
+use std::io::{stdin, stdout, Write};
 
 fn main() {
     let args: CliArgs = CliArgs::parse();
@@ -32,12 +33,48 @@ fn shortcut_path(dest: String) {
         None => panic!("Unable to find a location matching the destination {}", dest)
     };
 
-    info.update_selected_location(selected_index);
     info.update_output_file(selected_index);
+    info.update_selected_location(selected_index);
 }
 
 fn interactive_path() {
-    println!("No shortcut provided - interactive mode")
+    let mut info = get_goto_info();
+    
+    let mut choice: usize = 0;
+    let mut should_continue = false;
+
+    while !should_continue {
+        info.print_choices();
+
+        match get_user_input().parse::<usize>() {
+            Ok(num) => {
+                should_continue = true;
+                choice = num - 1;
+            },
+            Err(_) => println!("Unable to parse input into a number. Please try again")
+        };
+    }
+
+    info.update_output_file(choice);
+    info.update_selected_location(choice);
+}
+
+fn get_user_input() -> String {
+    print!("Enter choice: ");
+
+    let _ = stdout().flush();
+    let mut input = String::new();
+    stdin().read_line(&mut input).expect("No value entered");
+
+    if let Some('\n') = input.chars().next_back() {
+        input.pop();
+    }
+
+    if let Some('\r') = input.chars().next_back() {
+        input.pop();
+    }
+
+    return input;
 }
 
 fn get_goto_info() -> GotoInfo {
@@ -57,7 +94,6 @@ fn get_goto_info() -> GotoInfo {
     };
     
     GotoInfo{
-        home_dir: hd,
         config_file,
         output_file,
         locations
@@ -73,7 +109,6 @@ fn write_to_file(file: &str, data: &str) {
 
 #[derive(Debug)]
 struct GotoInfo {
-    home_dir: String,
     config_file: String,
     output_file: String,
     locations: Vec<GotoLocation>
@@ -84,6 +119,8 @@ impl GotoInfo {
         let selected_location = &mut self.locations[index];
 
         selected_location.increment_frequency();
+
+        self.locations.sort_by(|a, b| a.frequency.cmp(&b.frequency));
 
         let output_data = match serde_json::to_string(&self.locations) {
             Ok(data) => data,
@@ -97,6 +134,12 @@ impl GotoInfo {
         let location: &GotoLocation = &self.locations[location_index];
 
         write_to_file(&self.output_file, &location.destination);
+    }
+
+    fn print_choices(&self) {
+        for (i, loc) in self.locations.iter().enumerate() {
+            println!("{}) {}", i+1, loc.name);
+        }
     }
 }
 
