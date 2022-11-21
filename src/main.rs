@@ -25,19 +25,15 @@ fn main() {
 }
 
 fn shortcut_path(dest: String) {
-    let info = get_goto_info();
+    let mut info = get_goto_info();
 
     let selected_index = match info.locations.iter().position(|loc| loc.abbreviation == dest) {
         Some(i) => i,
         None => panic!("Unable to find a location matching the destination {}", dest)
     };
 
-    println!("Shortcut name: {}", dest);
-    // println!("Selected location: {:?}", selected_location);
-
-    update_config_file(info, selected_index);
-
-
+    info.update_selected_location(selected_index);
+    info.update_output_file(selected_index);
 }
 
 fn interactive_path() {
@@ -45,11 +41,10 @@ fn interactive_path() {
 }
 
 fn get_goto_info() -> GotoInfo {
-    let hd_path = match dirs::home_dir() {
-        Some(dir) => dir,
+    let hd = match dirs::home_dir() {
+        Some(dir) => format!("{}", dir.display()),
         None => panic!("Unable to get home directory")
     };
-    let hd = format!("{}", hd_path.display());
     let config_file = format!("{}/.goto", &hd);
     let output_file = format!("/tmp/goto.loc");
 
@@ -69,36 +64,40 @@ fn get_goto_info() -> GotoInfo {
     }
 }
 
-fn update_config_file(info: GotoInfo, selected_index: usize) {
-    let selected_location = &info.locations[selected_index];
-
-    let new_location = GotoLocation {
-        name: (*selected_location.name).to_string(),
-        abbreviation: (*selected_location.abbreviation).to_string(),
-        destination: (*selected_location.destination).to_string(),
-        frequency: selected_location.frequency + 1
-    };
-
-    let mut new_locations = info.locations;
-
-    let _ = std::mem::replace(&mut new_locations[selected_index], new_location);
-
-    let output_data = match serde_json::to_string(&new_locations) {
-        Ok(data) => data,
-        Err(_) => panic!("Cannot serialize locations to json")
-    };
-
-    match fs::write(info.config_file, output_data) {
+fn write_to_file(file: &str, data: &str) {
+    match fs::write(file, data) {
         Ok(_) => (),
         Err(_) => panic!("Cannot write data new locations to config file")
     }
 }
 
+#[derive(Debug)]
 struct GotoInfo {
     home_dir: String,
     config_file: String,
     output_file: String,
     locations: Vec<GotoLocation>
+}
+
+impl GotoInfo {
+    fn update_selected_location(&mut self, index: usize) {
+        let selected_location = &mut self.locations[index];
+
+        selected_location.increment_frequency();
+
+        let output_data = match serde_json::to_string(&self.locations) {
+            Ok(data) => data,
+            Err(_) => panic!("Cannot serialize locations to json")
+        };
+
+        write_to_file(&self.config_file, &output_data);
+    }
+
+    fn update_output_file(&self, location_index: usize) {
+        let location: &GotoLocation = &self.locations[location_index];
+
+        write_to_file(&self.output_file, &location.destination);
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -107,6 +106,12 @@ struct GotoLocation {
     abbreviation: String,
     destination: String,
     frequency: i64
+}
+
+impl GotoLocation {
+    fn increment_frequency(&mut self) {
+        self.frequency += 1
+    }
 }
 
 #[derive(Parser)]
