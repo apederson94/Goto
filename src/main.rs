@@ -9,20 +9,24 @@ fn main() {
 
     if args.add_flag {
         println!("Add flag present");
-    }
-
-    if args.edit_flag {
-        println!("Edit flag present");
-    }
-
-    if args.remove_flag {
+    } else if args.edit_flag {
+        edit_path();
+    } else if args.remove_flag {
         println!("Remove flag present")
+    } else {
+        match args.dest {
+            Some(dest) => shortcut_path(dest),
+            None => interactive_path()
+        }
     }
+}
 
-    match args.dest {
-        Some(dest) => shortcut_path(dest),
-        None => interactive_path()
-    }
+fn edit_path() {
+    let mut info = get_goto_info();
+
+    let choice = get_chosen_index(&info);
+
+    info.edit_location(choice);
 }
 
 fn shortcut_path(dest: String) {
@@ -40,13 +44,20 @@ fn shortcut_path(dest: String) {
 fn interactive_path() {
     let mut info = get_goto_info();
     
+    let choice = get_chosen_index(&info);
+
+    info.update_output_file(choice);
+    info.update_selected_location(choice);
+}
+
+fn get_chosen_index(info: &GotoInfo) -> usize {
     let mut choice: usize = 0;
     let mut should_continue = false;
 
     while !should_continue {
         info.print_choices();
 
-        match get_user_input().parse::<usize>() {
+        match get_user_input("Enter choice: ").parse::<usize>() {
             Ok(num) => {
                 should_continue = true;
                 choice = num - 1;
@@ -55,12 +66,11 @@ fn interactive_path() {
         };
     }
 
-    info.update_output_file(choice);
-    info.update_selected_location(choice);
+    return choice;
 }
 
-fn get_user_input() -> String {
-    print!("Enter choice: ");
+fn get_user_input(message: &str) -> String {
+    print!("{}", message);
 
     let _ = stdout().flush();
     let mut input = String::new();
@@ -140,6 +150,38 @@ impl GotoInfo {
         for (i, loc) in self.locations.iter().enumerate() {
             println!("{}) {}", i+1, loc.name);
         }
+    }
+
+    fn edit_location(&mut self, index: usize) {
+        let loc = &mut self.locations[index];
+
+        let message = format!("Enter name[{}]: ", loc.name);
+        let new_name = get_user_input(&message);
+
+        let message = format!("Enter abbreviation[{}]: ", loc.abbreviation);
+        let new_abbrev = get_user_input(&message);
+
+        let message = format!("Enter location[{}]: ", loc.destination);
+        let new_dest = get_user_input(&message);
+
+        if !new_name.is_empty() {
+            loc.name = new_name;
+        }
+
+        if !new_abbrev.is_empty() {
+            loc.abbreviation = new_abbrev;
+        }
+
+        if !new_dest.is_empty() {
+            loc.destination = new_dest;
+        }
+
+        let output_data = match serde_json::to_string(&self.locations) {
+            Ok(data) => data,
+            Err(_) => panic!("Cannot serialize locations to json")
+        };
+        
+        write_to_file(&self.config_file, &output_data);
     }
 }
 
