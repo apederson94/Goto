@@ -169,8 +169,9 @@ impl GotoInfo {
 
     fn update_output_file(&self, location_index: usize) {
         let location: &GotoLocation = &self.locations[location_index];
+        let expanded_location = str::replace(&location.destination, "~", &self.home_dir);
 
-        write_to_file(&self.output_file, &location.destination);
+        write_to_file(&self.output_file, &expanded_location);
     }
 
     fn print_choices(&self) {
@@ -226,10 +227,7 @@ impl GotoInfo {
             loc.destination = new_dest;
         }
 
-        let output_data = match serde_json::to_string(&self.locations) {
-            Ok(data) => data,
-            Err(_) => panic!("Cannot serialize locations to json")
-        };
+        let output_data = self.locations_to_json();
 
         write_to_file(&self.config_file, &output_data);
     }
