@@ -8,17 +8,42 @@ fn main() {
     let args: CliArgs = CliArgs::parse();
 
     if args.add_flag {
-        println!("Add flag present");
+        add_path();
     } else if args.edit_flag {
         edit_path();
     } else if args.remove_flag {
-        println!("Remove flag present")
+        rm_path();
     } else {
         match args.dest {
             Some(dest) => shortcut_path(dest),
-            None => interactive_path()
+            _none => interactive_path()
         }
     }
+}
+
+fn rm_path() {
+    let mut info = get_goto_info();
+
+    let choice = get_chosen_index(&info);
+
+    info.rm_location(choice);
+}
+
+fn add_path() {
+    let mut info = get_goto_info();
+
+    let name = get_user_input("Name: ");
+    let abbreviation = get_user_input("Abbreviation: ");
+    let destination = get_user_input("Destination: ");
+
+    let loc = GotoLocation {
+        name,
+        abbreviation,
+        destination,
+        frequency: 0
+    };
+
+    info.add_location(loc);
 }
 
 fn edit_path() {
@@ -104,6 +129,7 @@ fn get_goto_info() -> GotoInfo {
     };
     
     GotoInfo{
+        home_dir: hd,
         config_file,
         output_file,
         locations
@@ -119,6 +145,7 @@ fn write_to_file(file: &str, data: &str) {
 
 #[derive(Debug)]
 struct GotoInfo {
+    home_dir: String,
     config_file: String,
     output_file: String,
     locations: Vec<GotoLocation>
@@ -152,6 +179,29 @@ impl GotoInfo {
         }
     }
 
+    fn rm_location(&mut self, index: usize) {
+        let _ = self.locations.remove(index);
+
+        let output_data = self.locations_to_json();
+
+        write_to_file(&self.config_file, &output_data);
+    }
+
+    fn add_location(&mut self, loc: GotoLocation) {
+        self.locations.push(loc);
+
+        let output_data = self.locations_to_json();
+
+        write_to_file(&self.config_file, &output_data);
+    }
+
+    fn locations_to_json(&self) -> String {
+        match serde_json::to_string(&self.locations) {
+            Ok(data) => data,
+            Err(_) => panic!("Cannot serialize locations to json")
+        }
+    }
+
     fn edit_location(&mut self, index: usize) {
         let loc = &mut self.locations[index];
 
@@ -180,7 +230,7 @@ impl GotoInfo {
             Ok(data) => data,
             Err(_) => panic!("Cannot serialize locations to json")
         };
-        
+
         write_to_file(&self.config_file, &output_data);
     }
 }
