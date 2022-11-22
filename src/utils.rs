@@ -1,14 +1,14 @@
 use std::fs;
 use dirs;
 use std::io::{stdin, stdout, Write};
-use crate::goto_info::GotoInfo;
+use crate::config::Config;
 
-pub fn get_chosen_index(info: &GotoInfo) -> usize {
+pub fn get_chosen_index(config: &Config) -> usize {
     let mut choice: usize = 0;
     let mut should_continue = false;
 
     while !should_continue {
-        info.print_choices();
+        config.print_choices();
 
         match get_user_input("Enter choice: ").parse::<usize>() {
             Ok(num) => {
@@ -40,33 +40,32 @@ pub fn get_user_input(message: &str) -> String {
     return input;
 }
 
-pub fn get_goto_info() -> GotoInfo {
-    let hd = match dirs::home_dir() {
+pub fn get_home_dir() -> String {
+    match dirs::home_dir() {
         Some(dir) => format!("{}", dir.display()),
         None => panic!("Unable to get home directory")
-    };
-    let config_file = format!("{}/.goto", &hd);
-    let output_file = format!("/tmp/goto.loc");
+    }
+}
+
+pub fn get_config_path() -> String {
+    format!("{}/.goto", get_home_dir())
+}
+
+pub fn get_config() -> Config {
+    let config_file = get_config_path();
 
     let data = fs::read_to_string(&config_file)
         .expect("Unable to read goto file");
 
-    let locations = match serde_json::from_str(&data) {
-        Ok(locs) => locs,
+    match serde_json::from_str(&data) {
+        Ok(config) => config,
         Err(_) => panic!("Unable to parse goto file to json")
-    };
-
-    GotoInfo{
-        home_dir: hd,
-        config_file,
-        output_file,
-        locations
     }
 }
 
 pub fn write_to_file(file: &str, data: &str) {
     match fs::write(file, data) {
         Ok(_) => (),
-        Err(_) => panic!("Cannot write data new locations to config file")
+        Err(e) => panic!("Cannot write data to config file: {}", e)
     }
 }
