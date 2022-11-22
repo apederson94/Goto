@@ -85,7 +85,13 @@ fn init_if_necessary() -> bool {
 fn add_path(config: &mut Config) {
     let name = utils::get_user_input("Name: ");
     let abbreviation = utils::get_user_input("Abbreviation: ");
-    let destination = utils::get_user_input("Destination: ");
+    let dest_input = utils::get_user_input("Destination[default: current directory]: ");
+
+    let destination = if dest_input.is_empty() {
+        utils::get_current_dir()
+    } else {
+        dest_input
+    };
 
     let shortcut = Shortcut {
         name,

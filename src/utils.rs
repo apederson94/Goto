@@ -1,6 +1,7 @@
 use std::fs;
 use dirs;
 use std::io::{stdin, stdout, Write};
+use std::env;
 use crate::config::Config;
 
 pub fn get_chosen_index(config: &Config) -> usize {
@@ -44,6 +45,16 @@ pub fn get_home_dir() -> String {
     match dirs::home_dir() {
         Some(dir) => format!("{}", dir.display()),
         None => panic!("Unable to get home directory")
+    }
+}
+
+pub fn get_current_dir() -> String {
+    match env::current_dir() {
+        Ok(dir) => {
+            let long_dir = format!("{}", dir.display());
+            str::replace(&long_dir, &get_home_dir(), "~")
+        },
+        Err(_) => panic!("Unable to get current directory")
     }
 }
 
