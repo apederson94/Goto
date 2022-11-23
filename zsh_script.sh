@@ -1,10 +1,9 @@
 #!/bin/zsh
 
 function goto {
-  goto $1
-
+  __goto $1
+  output_file=$(__goto -p)
   if [ $? -eq 0 ]; then
-    cd $(cat /tmp/goto.loc)
+    cd $(cat $output_file)
   fi
-
 }

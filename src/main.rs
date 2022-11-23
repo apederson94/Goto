@@ -27,6 +27,9 @@ fn main() {
             edit_path(&mut config);
         } else if args.remove_flag {
             rm_path(&mut config);
+        } else if args.print_output_file_flag {
+            print_output_file(&config);
+            process::exit(0);
         } else {
             if !config.shortcuts.is_empty() {
                 match args.dest {
@@ -80,6 +83,10 @@ fn init_if_necessary() -> bool {
     }
 
     !config_exists
+}
+
+fn print_output_file(config: &Config) {
+    println!("{}", config.output_path)
 }
 
 fn add_path(config: &mut Config) {

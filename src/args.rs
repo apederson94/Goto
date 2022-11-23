@@ -9,4 +9,6 @@ pub struct Args {
     pub edit_flag: bool,
     #[arg(short = 'r')]
     pub remove_flag: bool,
+    #[arg(short = 'p')]
+    pub print_output_file_flag: bool
 }
